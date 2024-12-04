@@ -1,6 +1,6 @@
 import { BaseDeviceModel } from "./base_device.js";
 
-export type PZEM_DeviceModel = BaseDeviceModel & {
+export type Relay_DeviceModel = BaseDeviceModel & {
 	status: boolean;
 };
 

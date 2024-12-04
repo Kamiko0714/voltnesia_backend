@@ -1,6 +1,7 @@
 import express from "express";
 import dotenv from "dotenv";
 import sqlite3 from "better-sqlite3";
+import bodyParser from "body-parser";
 
 // Load semua environment variable dari file .env
 dotenv.config();
@@ -21,6 +22,9 @@ app.use((req, res, next) => {
 	next();
 });
 
+// Buat debugging json yang error
+// app.use(bodyParser.text({ type: "*/*" }));
+
 // Auto parse JSON body dari request
 app.use(express.json());
 
@@ -35,6 +39,9 @@ app.get("/", (req, res) => {
 	});
 });
 
+import EspRoute from "./routes/esp/index.js";
+app.post("/esp/data", EspRoute.postData);
+
 import AuthRoute from "./routes/auth/index.js";
 
 app.post("/auth/register", AuthRoute.register);
@@ -43,14 +50,13 @@ app.post("/auth/login", AuthRoute.login);
 import AuthMiddleware from "./middlewares/auth.js";
 app.use(AuthMiddleware);
 
-import EspRoute from "./routes/esp/index.js";
 app.get("/esp/registration", EspRoute.getRegistration);
 app.post("/esp/registration", EspRoute.postRegisteration);
-app.post("/esp/data", EspRoute.postData);
 
 import DeviceRoute from "./routes/devices/index.js";
 app.get("/devices", DeviceRoute.getAll);
 app.get("/device", DeviceRoute.getByid);
+app.get("/device/relay", DeviceRoute.getRelayByid);
 app.delete("/device", DeviceRoute.deleteByid);
 app.post("/delete-device", DeviceRoute.deleteByid);
 app.post("/update-device", DeviceRoute.updateData);
