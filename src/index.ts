@@ -47,16 +47,18 @@ import AuthRoute from "./routes/auth/index.js";
 app.post("/auth/register", AuthRoute.register);
 app.post("/auth/login", AuthRoute.login);
 
-import AuthMiddleware from "./middlewares/auth.js";
+import DeviceRoute from "./routes/devices/index.js";
+app.get("/device/relay", DeviceRoute.getRelayByid);
+
+import AuthMiddleware from "./middlewares/auth.js"; // Apapun yang dibawah ini akan disuruh login
 app.use(AuthMiddleware);
 
 app.get("/esp/registration", EspRoute.getRegistration);
 app.post("/esp/registration", EspRoute.postRegisteration);
 
-import DeviceRoute from "./routes/devices/index.js";
+
 app.get("/devices", DeviceRoute.getAll);
 app.get("/device", DeviceRoute.getByid);
-app.get("/device/relay", DeviceRoute.getRelayByid);
 app.delete("/device", DeviceRoute.deleteByid);
 app.post("/delete-device", DeviceRoute.deleteByid);
 app.post("/update-device", DeviceRoute.updateData);

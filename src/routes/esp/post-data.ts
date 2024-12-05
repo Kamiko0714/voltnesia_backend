@@ -1,9 +1,6 @@
 import { Request, Response } from "express";
 import { ESPModel } from "../../models/esp.js";
-import { BaseDeviceModel } from "../../models/devices/base_device.js";
-import { validateAdditionalProps as validatePZEM } from "../../models/devices/pzem.js";
-import { validateAdditionalProps as validateDHT } from "../../models/devices/dht.js";
-import { validateAdditionalProps as validateRelay } from "../../models/devices/relay.js";
+import { BaseDeviceModel, ExtractAdditionalProps, ExtractRequiredBaseProps, ValidateAdditionalProps } from "../../models/devices/base_device.js";
 
 export default function(req: Request, res: Response) {
 	const { id_esp, devices } = req.body;
@@ -42,6 +39,9 @@ export default function(req: Request, res: Response) {
 		if (!esp) { return; }
 	}
 
+	console.log("\t Device ID:", id_esp);
+	console.log("\t Post Body:", devices);
+
 	const devices_database = req.sqlite3.prepare<unknown[], BaseDeviceModel>("SELECT * FROM devices WHERE id_esp = ?").all(id_esp);
 
 	// Untuk setiap data perangkat pada request body
@@ -52,29 +52,14 @@ export default function(req: Request, res: Response) {
 	for (const deviceBody of devices) {
 		device_iteration++;
 
-		//#region Validasi data perangkat dasar (BaseDeviceModel)
-		if (!deviceBody.id) {
-			res.status(400).json({
-				message: `id perangkat ke-${device_iteration} harus diisi`
-			});
-			return;
-		}
+		const baseProps2 = ExtractRequiredBaseProps(deviceBody, false);
 
-		if (!deviceBody.id_esp) {
+		if (!baseProps2) {
 			res.status(400).json({
-				message: `id_esp perangkat ke-${device_iteration} harus diisi`
+				message: `Data wajib (base) perangkat ke-${device_iteration} harus diisi`
 			});
 			return;
 		}
-
-		if (!deviceBody.device_type) {
-			res.status(400).json({
-				message: `device_type perangkat ke-${device_iteration} harus diisi`
-			});
-			return;
-		}
-		deviceBody.device_type = deviceBody.device_type.toLowerCase();
-		//#endregion
 
 		let validatedDeviceBody: BaseDeviceModel = {
 			id: deviceBody.id,
@@ -88,58 +73,14 @@ export default function(req: Request, res: Response) {
 		// TYPESCRIPT-INFERRED: deviceBody.device_data tidak akan pernah berupa string di sini
 		if (typeof validatedDeviceBody.device_data === "string") { return; }
 
-		const baseProps = Object.keys(validatedDeviceBody);
-
-		// Ambil semua properti tambahan yang tidak ada di BaseDeviceModel
-		const additionalProps = Object.keys(deviceBody).filter(key => !baseProps.includes(key));
-
-		// Gabungkan semua properti tambahan ke dalam device_data
-		for (const prop of additionalProps) {
-			validatedDeviceBody.device_data[prop] = deviceBody[prop];
-		}
+		validatedDeviceBody.device_data = ExtractAdditionalProps(deviceBody);
 
 		// Validasi additionalProps menurut device_type yang sesuai
-		switch (validatedDeviceBody.device_type) {
-			case "pzem":
-				const validatePZEMResult = validatePZEM(validatedDeviceBody.device_data);
-
-				if (validatePZEMResult) {
-					res.status(400).json({
-						message: `Data perangkat ke-${device_iteration} tidak valid: ${validatePZEMResult}`
-					});
-					return;
-				}
-				break;
-
-			case "dht":
-				const validateDHTResult = validateDHT(validatedDeviceBody.device_data);
-
-				if (validateDHTResult) {
-					res.status(400).json({
-						message: `Data perangkat ke-${device_iteration} tidak valid: ${validateDHTResult}`
-					});
-					return;
-				}
-				break;
-
-			case "relay":
-				const validateRelayResult = validateRelay(validatedDeviceBody.device_data);
-
-				if (validateRelayResult) {
-					res.status(400).json({
-						message: `Data perangkat ke-${device_iteration} tidak valid: ${validateRelayResult}`
-					});
-					return;
-				}
-				break;
-
-			// TODO: Tambahkan validasi untuk device_type lainnya di sini (jika ada)
-		
-			default:
-				res.status(400).json({
-					message: `device_type perangkat ke-${device_iteration} tidak dikenali`
-				});
-				break;
+		const HasilValidasitData = ValidateAdditionalProps(validatedDeviceBody.device_type, validatedDeviceBody.device_data);
+		if (HasilValidasitData) {
+			res.status(400).json({
+				message: `Data perangkat ke-${device_iteration} tidak valid: ${HasilValidasitData}`
+			});
 		}
 
 		// Cek apakah perangkat tersebut sudah ada
